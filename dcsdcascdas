@@ -1,0 +1,77 @@
+-- Auto-clicker for VS.ZN.B1..B4.MC until MX == 0
+-- Works on both PC and Mobile
+-- Safe: never overclicks past MX = 0
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local GuiService = game:GetService("GuiService")
+local UserInputService = game:GetService("UserInputService")
+local VIM = game:GetService("VirtualInputManager")
+
+local plr = Players.LocalPlayer
+local playerGui = plr:WaitForChild("PlayerGui")
+local isMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
+
+local B_NAMES = {"B1","B2","B3","B4"}
+
+local function getScreenGui(obj)
+    return obj and obj:FindFirstAncestorOfClass("ScreenGui")
+end
+
+local function isActuallyVisible(guiObj)
+    if not guiObj.Visible then return false end
+    local p = guiObj.Parent
+    while p and not p:IsA("ScreenGui") do
+        if p:IsA("GuiObject") and p.Visible == false then
+            return false
+        end
+        p = p.Parent
+    end
+    local sg = getScreenGui(guiObj)
+    if not sg or sg.Enabled == false then
+        return false
+    end
+    return true
+end
+
+local function clickImageButton(btn)
+    -- Figure out button center on screen
+    local sg = getScreenGui(btn)
+    local inset = GuiService:GetGuiInset()
+    local adjust = (sg and sg.IgnoreGuiInset) and Vector2.zero or inset
+    local center = btn.AbsolutePosition + (btn.AbsoluteSize / 2) + adjust
+
+    if isMobile then
+        -- Fake finger tap (touch down + up)
+        VIM:SendTouchEvent(center.X, center.Y, 0, true)   -- touch begin
+        VIM:SendTouchEvent(center.X, center.Y, 0, false)  -- touch end
+    else
+        -- PC: Real mouse click (down + up)
+        VIM:SendMouseButtonEvent(center.X, center.Y, 0, true, btn, 0)
+        VIM:SendMouseButtonEvent(center.X, center.Y, 0, false, btn, 0)
+    end
+
+    -- Backup for UIs that rely on Activated
+    pcall(function() btn:Activate() end)
+end
+
+RunService.Heartbeat:Connect(function()
+    local VS = playerGui:FindFirstChild("VS")
+    if not VS or VS.Enabled == false then return end
+
+    local ZN = VS:FindFirstChild("ZN")
+    if not ZN then return end
+
+    for _, name in ipairs(B_NAMES) do
+        local B = ZN:FindFirstChild(name)
+        if B then
+            local MC = B:FindFirstChild("MC")
+            if MC and MC:IsA("ImageButton") and isActuallyVisible(MC) then
+                local MX = MC:FindFirstChild("MX")
+                if MX and MX:IsA("IntValue") and MX.Value > 0 then
+                    clickImageButton(MC)
+                end
+            end
+        end
+    end
+end)
