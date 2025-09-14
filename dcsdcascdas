@@ -1,6 +1,5 @@
 -- Auto-clicker for VS.ZN.B1..B4.MC until MX == 0
--- Works on both PC and Mobile
--- Safe: never overclicks past MX = 0
+-- Works safely on both PC and Mobile (no MX negatives)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -35,24 +34,21 @@ local function isActuallyVisible(guiObj)
 end
 
 local function clickImageButton(btn)
-    -- Figure out button center on screen
-    local sg = getScreenGui(btn)
-    local inset = GuiService:GetGuiInset()
-    local adjust = (sg and sg.IgnoreGuiInset) and Vector2.zero or inset
-    local center = btn.AbsolutePosition + (btn.AbsoluteSize / 2) + adjust
-
     if isMobile then
-        -- Fake finger tap (touch down + up)
-        VIM:SendTouchEvent(center.X, center.Y, 0, true)   -- touch begin
-        VIM:SendTouchEvent(center.X, center.Y, 0, false)  -- touch end
+        -- Mobile: Activate is reliable
+        pcall(function() btn:Activate() end)
     else
-        -- PC: Real mouse click (down + up)
+        -- PC: simulate mouse click
+        local sg = getScreenGui(btn)
+        local inset = GuiService:GetGuiInset()
+        local adjust = (sg and sg.IgnoreGuiInset) and Vector2.zero or inset
+        local center = btn.AbsolutePosition + (btn.AbsoluteSize / 2) + adjust
+
         VIM:SendMouseButtonEvent(center.X, center.Y, 0, true, btn, 0)
         VIM:SendMouseButtonEvent(center.X, center.Y, 0, false, btn, 0)
-    end
 
-    -- Backup for UIs that rely on Activated
-    pcall(function() btn:Activate() end)
+        pcall(function() btn:Activate() end)
+    end
 end
 
 RunService.Heartbeat:Connect(function()
